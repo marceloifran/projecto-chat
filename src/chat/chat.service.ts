@@ -11,7 +11,12 @@ export class ChatService {
   constructor(private configService: ConfigService) {
     const apiKey = this.configService.get<string>('OPENAI_API_KEY');
     if (apiKey && apiKey.startsWith('sk-')) {
-      this.openai = new OpenAI({ apiKey });
+      const isOpenRouter = apiKey.startsWith('sk-or-');
+      this.openai = new OpenAI({
+        apiKey,
+        baseURL: isOpenRouter ? 'https://openrouter.ai/api/v1' : undefined,
+      });
+      this.logger.log(`✅ OpenAI client initialized${isOpenRouter ? ' (OpenRouter mode)' : ''}.`);
     } else {
       this.logger.warn('⚠️ OPENAI_API_KEY is missing or invalid. AI features will be limited.');
     }
@@ -29,9 +34,12 @@ export class ChatService {
       isMock = true;
     } else {
       try {
-        this.logger.log('Requesting response from ChatGPT (gpt-4o-mini)...');
+        const isOpenRouter = this.configService.get<string>('OPENAI_API_KEY')?.startsWith('sk-or-');
+        const model = isOpenRouter ? 'openai/gpt-4o-mini' : 'gpt-4o-mini';
+        
+        this.logger.log(`Requesting response from ${model}...`);
         const completion = await this.openai.chat.completions.create({
-          model: 'gpt-4o-mini',
+          model: model,
           messages: [{ role: 'user', content: message }],
         });
 
